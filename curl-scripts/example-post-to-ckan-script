@@ -1,0 +1,5 @@
+curl --location --request POST 'https://dd.sofia.bg/api/3/action/resource_create' \
+--header 'Authorization: <TOKEN>' \
+--form 'package_id="drinking-fountains"' \
+--form 'upload=@"/home/boris/file.csv"' \
+--form 'name="new-resource-with-file"'

@@ -7,4 +7,9 @@ _service-provider/*
 _solr/schema.xml
 _src/*
 local/*
+ckanext-sofia
+src
 .env
+
+host.cert
+host.key

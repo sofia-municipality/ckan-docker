@@ -1,0 +1,5 @@
+curl -X POST https://dd.sofia.bg/api/3/action/organization_create -H "Authorization: <TOKEN>" -d '{
+  "name": "demo-organization",
+  "title": "Demo Organization",
+  "description": "This is my awesome organization"
+}'
