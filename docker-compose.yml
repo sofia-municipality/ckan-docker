@@ -22,6 +22,7 @@ services:
     restart: unless-stopped
     
   ckan:
+    platform: linux/amd64
     build:
       context: ckan/
       dockerfile: Dockerfile
