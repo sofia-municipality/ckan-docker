@@ -19,6 +19,9 @@ COPY --chown=ckan-sys:ckan-sys docker-entrypoint.d/* /docker-entrypoint.d/
 # runtime mounted ones)
 COPY --chown=ckan-sys:ckan-sys patches ${APP_DIR}/patches
 
+### Geoview - map previews for GeoJSON resources (geojson_view) ###
+RUN pip install -e 'git+https://github.com/ckan/ckanext-geoview.git@v0.3.1#egg=ckanext-geoview'
+
 USER ckan
 
 RUN for d in $APP_DIR/patches/*; do \
