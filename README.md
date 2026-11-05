@@ -17,13 +17,13 @@
     - [Applying patches](#applying-patches)
     - [_uWSGI_ command line arguments](#uwsgi-command-line-arguments)
   - [6. Debugging with pdb](#6-debugging-with-pdb)
-  - [7. Datastore and datapusher](#7-datastore-and-datapusher)
+  - [7. Datastore and XLoader](#7-datastore-and-xloader)
   - [8. NGINX](#8-nginx)
   - [9. ckanext-envvars](#9-ckanext-envvars)
   - [10. CKAN\_SITE\_URL](#10-ckan_site_url)
   - [11. Manage new users](#11-manage-new-users)
   - [12. Changing the base image](#12-changing-the-base-image)
-  - [13. Replacing DataPusher with XLoader](#13-replacing-datapusher-with-xloader)
+  - [13. XLoader replacing DataPusher](#13-xloader-replacing-datapusher)
   - [Copying and License](#copying-and-license)
 
 
@@ -35,11 +35,12 @@ The CKAN images used are from the official CKAN [ckan-docker](https://github.com
 
 The non-CKAN images are as follows:
 
-* DataPusher: CKAN's [pre-configured DataPusher image](https://github.com/ckan/ckan-docker-base/tree/main/datapusher).
 * PostgreSQL: Official PostgreSQL image. Database files are stored in a named volume.
 * Solr: CKAN's [pre-configured Solr image](https://github.com/ckan/ckan-solr). Index data is stored in a named volume.
 * Redis: standard Redis image
 * NGINX: latest stable nginx image that includes SSL and Non-SSL endpoints
+
+XLoader, which loads data files into the DataStore, is installed in the CKAN image and runs inside the CKAN container, so it needs no container of its own.
 
 The site is configured using environment variables that you can set in the `.env` file.
 
@@ -79,13 +80,12 @@ This will start up the containers in the current window. By default the containe
 using a different colour. You could also use the -d "detach mode" option ie: `docker compose up -d` if you wished to use the current
 window for something else.
 
-At the end of the container start sequence there should be 6 containers running:
+At the end of the container start sequence there should be 5 containers running:
 
 ```bash
 $ docker compose ps
 NAME                       IMAGE                              COMMAND                  SERVICE      CREATED         STATUS                   PORTS
 ckan-docker-ckan-1         ckan-docker-ckan                   "/srv/app/start_ckan…"   ckan         4 minutes ago   Up 3 minutes (healthy)   5000/tcp
-ckan-docker-datapusher-1   ckan/ckan-base-datapusher:0.0.20   "sh -c 'uwsgi --plug…"   datapusher   4 minutes ago   Up 4 minutes (healthy)   8800/tcp
 ckan-docker-db-1           ckan-docker-db                     "docker-entrypoint.s…"   db           4 minutes ago   Up 4 minutes (healthy)
 ckan-docker-nginx-1        ckan-docker-nginx                  "/bin/sh -c 'openssl…"   nginx        4 minutes ago   Up 2 minutes             80/tcp, 0.0.0.0:8443->443/tcp
 ckan-docker-redis-1        redis:6                            "docker-entrypoint.s…"   redis        4 minutes ago   Up 4 minutes (healthy)
@@ -197,7 +197,8 @@ You can now set breakpoints and remote debug your CKAN development instance.
 The Docker Compose environment `.env` file by default is set up for production mode. There are a few changes needed if you would like to run in Development mode:
 
 1. Change the `CKAN_SITE_URL` variable to be: http://localhost:5000
-2. Update the `CKAN__DATAPUSHER__CALLBACK_URL_BASE` variable to use the `ckan-dev` container name: http://ckan-dev:5000
+
+XLoader needs no change: its jobs worker runs inside the CKAN container and reaches CKAN at `CKANEXT__XLOADER__SITE_URL` (http://localhost:5000) in both modes.
 
 
 ## 5. CKAN images
@@ -308,10 +309,10 @@ Debug with pdb (example) - Interact with `docker attach $(docker container ls -q
 
 command: `python -m pdb /usr/lib/ckan/venv/bin/ckan --config /srv/app/ckan.ini run --host 0.0.0.0 --passthrough-errors`
 
-## 7. Datastore and datapusher
+## 7. Datastore and XLoader
 
-The Datastore database and user is created as part of the entrypoint scripts for the db container. There is also a Datapusher container
-running the latest version of Datapusher.
+The Datastore database and user is created as part of the entrypoint scripts for the db container. Data files are loaded into the
+Datastore by [XLoader](https://github.com/ckan/ckanext-xloader), which runs inside the CKAN container (see section 13).
 
 ## 8. NGINX
 
@@ -334,8 +335,8 @@ For the extension to correctly identify which env var keys map to the format use
 
 For example:
 
-  * `CKAN__PLUGINS="envvars image_view text_view recline_view datastore datapusher"`
-  * `CKAN__DATAPUSHER__CALLBACK_URL_BASE=http://ckan:5000`
+  * `CKAN__PLUGINS="envvars image_view text_view datatables_view datastore xloader"`
+  * `CKANEXT__XLOADER__SITE_URL=http://localhost:5000`
   * `CKAN___BEAKER__SESSION__SECRET=CHANGE_ME`
 
 These parameters can be added to the `.env` file
@@ -367,9 +368,16 @@ For convenience the CKAN_SITE_URL parameter should be set in the .env file. For 
 
 The base image used in the CKAN Dockerfile and Dockerfile.dev can be changed so a different DockerHub image is used eg: ckan/ckan-base:2.10.5 can be used instead of ckan/ckan-base:2.11.0
 
-## 13. Replacing DataPusher with XLoader
+## 13. XLoader replacing DataPusher
 
-Check out the wiki page for this: https://github.com/ckan/ckan-docker/wiki/Replacing-DataPusher-with-XLoader
+This setup uses [XLoader](https://github.com/ckan/ckanext-xloader) instead of DataPusher; there is no DataPusher container.
+
+* XLoader is installed in `ckan/Dockerfile` and `ckan/Dockerfile.dev` and enabled with the `xloader` plugin in `CKAN__PLUGINS`.
+* `ckan/docker-entrypoint.d/01_setup_xloader.sh` creates an API token for the sysadmin on startup, unless `CKANEXT__XLOADER__API_TOKEN` is set.
+* `ckan/docker-entrypoint.d/02_start_jobs_worker.sh` runs `ckan jobs worker` in the CKAN container, which does the loading.
+* Its settings (`CKANEXT__XLOADER__*`) are in the `.env` file.
+
+For background see the wiki page: https://github.com/ckan/ckan-docker/wiki/Replacing-DataPusher-with-XLoader
 
 Copying and License
 -------------------
