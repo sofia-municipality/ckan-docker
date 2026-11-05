@@ -5,9 +5,12 @@ USER root
 
 # Install any extensions needed by your CKAN instance
 # See Dockerfile.dev for more details and examples
- 
-RUN pip install --no-cache-dir \
+RUN pip install --no-cache-dir -e \
     git+https://github.com/sofia-municipality/ckanext-sofia.git@main#egg=ckanext-sofia
+
+
+### XLoader ###
+RUN pip install -e 'git+https://github.com/ckan/ckanext-xloader.git@2.6.0#egg=ckanext-xloader'
 
 # Copy custom initialization scripts
 COPY --chown=ckan-sys:ckan-sys docker-entrypoint.d/* /docker-entrypoint.d/
