@@ -23,7 +23,8 @@
   - [10. CKAN\_SITE\_URL](#10-ckan_site_url)
   - [11. Manage new users](#11-manage-new-users)
   - [12. Changing the base image](#12-changing-the-base-image)
-  - [13. XLoader replacing DataPusher](#13-xloader-replacing-datapusher)
+  - [13. Replacing DataPusher with XLoader](#13-replacing-datapusher-with-xloader)
+  - [14. GeoJSON previews](#14-geojson-previews)
   - [Copying and License](#copying-and-license)
 
 
@@ -378,6 +379,19 @@ This setup uses [XLoader](https://github.com/ckan/ckanext-xloader) instead of Da
 * Its settings (`CKANEXT__XLOADER__*`) are in the `.env` file.
 
 For background see the wiki page: https://github.com/ckan/ckan-docker/wiki/Replacing-DataPusher-with-XLoader
+
+## 14. GeoJSON previews
+
+GeoJSON resources are shown on a map by the `geojson_view` plugin of [ckanext-geoview](https://github.com/ckan/ckanext-geoview),
+installed in `ckan/Dockerfile` and `ckan/Dockerfile.dev`.
+
+* `resource_proxy` must be enabled too, so GeoJSON files hosted on other domains can be shown.
+* The basemap is set by the `CKANEXT__SPATIAL__COMMON_MAP__*` variables; without them the map shows "No map provider set".
+* `CKAN__RESOURCE_PROXY__MAX_FILE_SIZE` raises the proxy's 1MB limit; files bigger than `CKANEXT__GEOVIEW__GEOJSON__MAX_FILE_SIZE`
+  are only rendered when the user asks for it.
+* `geojson_view` is a default view, so it is added to new GeoJSON resources. For existing ones run:
+
+  `docker compose exec ckan ckan -c /srv/app/ckan.ini views create geojson_view -y`
 
 Copying and License
 -------------------

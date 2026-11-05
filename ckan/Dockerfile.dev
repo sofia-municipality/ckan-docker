@@ -22,6 +22,9 @@ RUN pip install -e 'git+https://github.com/ckan/ckanext-xloader.git@2.6.0#egg=ck
 ### Scheming ###
 #RUN  pip3 install -e 'git+https://github.com/ckan/ckanext-scheming.git@master#egg=ckanext-scheming'
 
+### Geoview - map previews for GeoJSON resources (geojson_view) ###
+RUN pip install -e 'git+https://github.com/ckan/ckanext-geoview.git@v0.3.1#egg=ckanext-geoview'
+
 ### Pages ###
 #RUN  pip3 install -e git+https://github.com/ckan/ckanext-pages.git#egg=ckanext-pages
 
