@@ -13,7 +13,8 @@ RUN pip install -e 'git+https://github.com/ckan/ckanext-xloader.git@2.6.0#egg=ck
 RUN pip install -e 'git+https://github.com/ckan/ckanext-geoview.git@v0.3.1#egg=ckanext-geoview'
 
 ### Pages - static pages and blog ("Актуално", news) ###
-RUN pip install -e 'git+https://github.com/ckan/ckanext-pages.git@v0.5.2#egg=ckanext-pages'
+# Pinned to a master commit: v0.5.2 (latest release) fails on CKAN 2.11 and has no migrations
+RUN pip install -e 'git+https://github.com/ckan/ckanext-pages.git@28eba99ad85d3b9037f5aaddad1f083300c69041#egg=ckanext-pages'
 
 # Copy custom initialization scripts
 COPY --chown=ckan-sys:ckan-sys docker-entrypoint.d/* /docker-entrypoint.d/
