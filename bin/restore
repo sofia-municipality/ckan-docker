@@ -48,6 +48,6 @@ docker run --rm -i -v "$STORAGE_VOLUME:/data" alpine \
 echo "Starting CKAN and rebuilding the search index"
 docker compose up -d ckan
 until [ "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q ckan)")" = healthy ]; do sleep 5; done
-docker compose exec -T ckan ckan -c /srv/app/ckan.ini search-index rebuild -r
+docker compose exec -T ckan ckan -c /srv/app/ckan.ini search-index rebuild
 
 echo "Restore complete"
