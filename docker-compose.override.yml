@@ -1,0 +1,14 @@
+# Local development overrides, loaded automatically by `docker compose`.
+# Production deployments use only docker-compose.yml:
+#   docker compose -f docker-compose.yml up -d
+#
+# - ckanext-sofia is built from ./src/ckanext-sofia (local branch) instead of
+#   GitHub, and mounted so code and template changes need only a restart.
+services:
+  ckan:
+    build:
+      target: local
+      additional_contexts:
+        ckanext-sofia: ./src/ckanext-sofia
+    volumes:
+      - ./src/ckanext-sofia:/srv/app/src/ckanext-sofia
