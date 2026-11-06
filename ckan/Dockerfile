@@ -12,6 +12,9 @@ RUN pip install -e 'git+https://github.com/ckan/ckanext-xloader.git@2.6.0#egg=ck
 ### Geoview - map previews for GeoJSON resources (geojson_view) ###
 RUN pip install -e 'git+https://github.com/ckan/ckanext-geoview.git@v0.3.1#egg=ckanext-geoview'
 
+### Pages - static pages and blog ("Актуално", news) ###
+RUN pip install -e 'git+https://github.com/ckan/ckanext-pages.git@v0.5.2#egg=ckanext-pages'
+
 # Copy custom initialization scripts
 COPY --chown=ckan-sys:ckan-sys docker-entrypoint.d/* /docker-entrypoint.d/
 
