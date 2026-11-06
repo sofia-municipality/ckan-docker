@@ -1,0 +1,108 @@
+scheming_version: 2
+dataset_type: dataset
+about: Набор от данни на портала за отворени данни на Столична община
+about_url: https://github.com/sofia-municipality/ckan-docker
+
+dataset_fields:
+
+- field_name: title
+  label: {bg: Заглавие, en: Title}
+  preset: title
+  form_placeholder: {bg: напр. Паркоместа в синя и зелена зона, en: eg. A descriptive title}
+
+- field_name: name
+  label: URL
+  preset: dataset_slug
+  form_placeholder: {bg: напр. parking-zones, en: eg. my-dataset}
+
+- field_name: notes
+  label: {bg: Описание, en: Description}
+  form_snippet: markdown.html
+
+- field_name: tag_string
+  label: {bg: Тагове, en: Tags}
+  preset: tag_string_autocomplete
+
+- field_name: license_id
+  label: {bg: Лиценз, en: License}
+  form_snippet: license.html
+
+- field_name: owner_org
+  label: {bg: Организация, en: Organization}
+  preset: dataset_organization
+
+# TS 2.1-A: open data, data on request outside the platform, paid data.
+# Existing datasets have no value; they are treated as "open".
+- field_name: access_level
+  label: {bg: Ниво на достъп, en: Access level}
+  preset: select
+  required: true
+  validators: default(open) scheming_required scheming_choices
+  choices:
+  - value: open
+    label: {bg: Отворени, en: Open}
+  - value: on_request
+    label: {bg: Със заявка, en: On request}
+  - value: paid
+    label: {bg: Платени, en: Paid}
+  help_text:
+    bg: >-
+      „Със заявка“ и „Платени“: метаданните остават публични, а данните са достъпни
+      само за членовете на организацията и сътрудниците на набора.
+    en: >-
+      "On request" and "Paid": the metadata stays public, the data is available only
+      to the organisation's members and the dataset's collaborators.
+
+# Used by the "overdue update" administrative report (TS "Сценарии")
+- field_name: update_frequency
+  label: {bg: Честота на актуализация, en: Update frequency}
+  preset: select
+  choices:
+  - {value: daily, label: {bg: Ежедневно, en: Daily}}
+  - {value: weekly, label: {bg: Седмично, en: Weekly}}
+  - {value: monthly, label: {bg: Месечно, en: Monthly}}
+  - {value: quarterly, label: {bg: Тримесечно, en: Quarterly}}
+  - {value: annually, label: {bg: Годишно, en: Annually}}
+  - {value: irregular, label: {bg: При промяна, en: When changed}}
+  - {value: never, label: {bg: Не се актуализира, en: Not updated}}
+
+- field_name: url
+  label: {bg: Източник, en: Source}
+  display_snippet: link.html
+
+- field_name: version
+  label: {bg: Версия, en: Version}
+  validators: ignore_missing unicode_safe package_version_validator
+
+- field_name: author
+  label: {bg: Автор, en: Author}
+
+- field_name: author_email
+  label: {bg: Имейл на автора, en: Author Email}
+  display_snippet: email.html
+  display_email_name_field: author
+
+- field_name: maintainer
+  label: {bg: Отговорник, en: Maintainer}
+
+- field_name: maintainer_email
+  label: {bg: Имейл на отговорника, en: Maintainer Email}
+  display_snippet: email.html
+  display_email_name_field: maintainer
+
+resource_fields:
+
+- field_name: url
+  label: URL
+  preset: resource_url_upload
+
+- field_name: name
+  label: {bg: Име, en: Name}
+
+- field_name: description
+  label: {bg: Описание, en: Description}
+  form_snippet: markdown.html
+
+- field_name: format
+  label: {bg: Формат, en: Format}
+  preset: resource_format_autocomplete

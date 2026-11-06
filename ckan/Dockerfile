@@ -12,6 +12,10 @@ RUN pip install -e 'git+https://github.com/ckan/ckanext-xloader.git@2.6.0#egg=ck
 ### Geoview - map previews for GeoJSON resources (geojson_view) ###
 RUN pip install -e 'git+https://github.com/ckan/ckanext-geoview.git@v0.3.1#egg=ckanext-geoview'
 
+### Scheming - dataset and organisation schemas (ckan/schemas) ###
+RUN pip install -e 'git+https://github.com/ckan/ckanext-scheming.git@release-3.1.0#egg=ckanext-scheming'
+COPY --chown=ckan-sys:ckan-sys schemas ${APP_DIR}/schemas
+
 # Copy custom initialization scripts
 COPY --chown=ckan-sys:ckan-sys docker-entrypoint.d/* /docker-entrypoint.d/
 
