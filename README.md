@@ -90,7 +90,7 @@ ckan-docker-ckan-1         ckan-docker-ckan                   "/srv/app/start_ck
 ckan-docker-db-1           ckan-docker-db                     "docker-entrypoint.s…"   db           4 minutes ago   Up 4 minutes (healthy)
 ckan-docker-nginx-1        ckan-docker-nginx                  "/bin/sh -c 'openssl…"   nginx        4 minutes ago   Up 2 minutes             80/tcp, 0.0.0.0:8443->443/tcp
 ckan-docker-redis-1        redis:6                            "docker-entrypoint.s…"   redis        4 minutes ago   Up 4 minutes (healthy)
-ckan-docker-solr-1         ckan/ckan-solr:2.10-solr9          "docker-entrypoint.s…"   solr         4 minutes ago   Up 4 minutes (healthy)
+ckan-docker-solr-1         ckan/ckan-solr:2.11-solr9          "docker-entrypoint.s…"   solr         4 minutes ago   Up 4 minutes (healthy)
 ```
 
 After this step, CKAN should be running at `CKAN_SITE_URL` (by default https://localhost:8443)
@@ -367,7 +367,7 @@ For convenience the CKAN_SITE_URL parameter should be set in the .env file. For 
 
 ## 12. Changing the base image
 
-The base image used in the CKAN Dockerfile and Dockerfile.dev can be changed so a different DockerHub image is used eg: ckan/ckan-base:2.10.5 can be used instead of ckan/ckan-base:2.11.0
+The base image used in the CKAN Dockerfile and Dockerfile.dev can be changed so a different DockerHub image is used eg: ckan/ckan-base:2.12 can be used instead of ckan/ckan-base:2.11.7
 
 ## 13. XLoader replacing DataPusher
 
