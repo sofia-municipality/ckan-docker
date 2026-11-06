@@ -4,7 +4,8 @@
 #   bin/backup [DESTINATION]        (default: backup/<date>_<time>)
 #
 # Writes globals.sql (roles), ckandb.dump and datastore.dump (pg_dump custom
-# format), ckan_storage.tgz (uploaded files), ckan.ini and env.backup (.env).
+# format), ckan_storage.tgz (uploaded files), ckan.ini, env.backup (.env) and
+# datasets.json (package_search of all datasets, including private and drafts).
 # The Solr index is not backed up: bin/restore rebuilds it.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -26,6 +27,20 @@ docker compose exec -T db pg_dump -U "$PG_USER" -Fc "$DATASTORE_DB" > "$DEST/dat
 docker compose exec -T ckan tar czf - -C /var/lib/ckan . > "$DEST/ckan_storage.tgz"
 docker compose exec -T ckan cat /srv/app/ckan.ini > "$DEST/ckan.ini"
 cp .env "$DEST/env.backup"
+
+# datasets.json, read with a temporary sysadmin token that is revoked afterwards
+SYSADMIN=$(env_value CKAN_SYSADMIN_NAME); SYSADMIN=${SYSADMIN:-ckan_admin}
+TOKEN_NAME="backup-$(date +%s)"
+TOKEN=$(docker compose exec -T ckan ckan user token add "$SYSADMIN" "$TOKEN_NAME" 2>/dev/null | tail -n 1 | tr -d '\t\r')
+revoke_token() {
+    for id in $(docker compose exec -T ckan ckan user token list "$SYSADMIN" 2>/dev/null \
+                | sed -n "s/.*\[\(.*\)\] $TOKEN_NAME - .*/\1/p"); do
+        docker compose exec -T ckan ckan user token revoke "$id" > /dev/null 2>&1
+    done
+}
+trap revoke_token EXIT
+docker compose exec -T -e TOKEN="$TOKEN" ckan python3 -c "import os,urllib.request as u;r=u.Request('http://localhost:5000/api/3/action/package_search?rows=1000&include_private=true&include_drafts=true',headers={'Authorization':os.environ['TOKEN']});print(u.urlopen(r).read().decode())" > "$DEST/datasets.json"
+unset TOKEN
 
 # A backup that cannot be read is worse than none: check the dumps
 for f in ckandb.dump datastore.dump; do

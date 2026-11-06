@@ -24,6 +24,7 @@ fi
 env_value() { grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- | tr -d '"'; }
 PG_USER=$(env_value POSTGRES_USER)
 CKAN_DB=$(env_value CKAN_DB)
+CKAN_DB_USER=$(env_value CKAN_DB_USER)
 DATASTORE_DB=$(env_value DATASTORE_DB)
 
 echo "Stopping CKAN"
@@ -32,12 +33,17 @@ docker compose stop ckan
 echo "Restoring roles and databases"
 # Existing roles make some statements fail; that is expected
 docker compose exec -T db psql -U "$PG_USER" -q -d postgres < "$SRC/globals.sql" > /dev/null 2>&1 || true
-docker compose exec -T db pg_restore -U "$PG_USER" --clean --if-exists -d "$CKAN_DB" < "$SRC/ckandb.dump"
+docker compose exec -T db pg_restore -U "$PG_USER" --clean --if-exists --no-owner --role="$CKAN_DB_USER" \
+    -d "$CKAN_DB" < "$SRC/ckandb.dump"
 docker compose exec -T db pg_restore -U "$PG_USER" --clean --if-exists -d "$DATASTORE_DB" < "$SRC/datastore.dump"
 
 echo "Restoring uploaded files"
-docker compose run --rm --no-deps -T --entrypoint sh ckan \
-    -c 'find /var/lib/ckan -mindepth 1 -delete && tar xzf - -C /var/lib/ckan' < "$SRC/ckan_storage.tgz"
+# The volume mounted at /var/lib/ckan in the CKAN container (e.g. ckan-docker_ckan_storage)
+STORAGE_VOLUME=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/lib/ckan"}}{{.Name}}{{end}}{{end}}' \
+    "$(docker compose ps -a -q ckan)")
+# Files uploaded after the backup are removed, so the storage matches the database
+docker run --rm -i -v "$STORAGE_VOLUME:/data" alpine \
+    sh -c 'find /data -mindepth 1 -delete && tar xzf - -C /data' < "$SRC/ckan_storage.tgz"
 
 echo "Starting CKAN and rebuilding the search index"
 docker compose up -d ckan
