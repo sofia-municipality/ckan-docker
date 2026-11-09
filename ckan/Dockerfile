@@ -31,7 +31,7 @@ RUN for d in $APP_DIR/patches/*; do \
 
 
 # Local development: ckanext-sofia from the checkout in ../src/ckanext-sofia
-# (passed in as the "ckanext-sofia" build context by docker-compose.override.yml)
+# (passed in as the "ckanext-sofia" build context by docker-compose.local.yml)
 FROM base AS local
 
 USER root

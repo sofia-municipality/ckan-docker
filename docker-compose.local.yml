@@ -1,0 +1,21 @@
+# Local development, on top of docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+# or set in .env (then plain "docker compose ..." uses both files):
+#   COMPOSE_PATH_SEPARATOR=:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.local.yml
+# Production uses docker-compose.yml alone.
+#
+# - ckanext-sofia is built from ./src/ckanext-sofia (local branch) instead of
+#   GitHub, and mounted so code and template changes need only a restart.
+# - CKAN's port is published on all interfaces, so devices on the local
+#   network reach it without nginx/TLS.
+services:
+  ckan:
+    build:
+      target: local
+      additional_contexts:
+        ckanext-sofia: ./src/ckanext-sofia
+    ports:
+      - "0.0.0.0:${CKAN_PORT_HOST}:5000"
+    volumes:
+      - ./src/ckanext-sofia:/srv/app/src/ckanext-sofia

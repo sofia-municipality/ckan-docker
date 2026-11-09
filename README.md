@@ -393,6 +393,22 @@ installed in `ckan/Dockerfile` and `ckan/Dockerfile.dev`.
 
   `docker compose exec ckan ckan -c /srv/app/ckan.ini views create geojson_view -y`
 
+## 15. Local development with ckanext-sofia from `src/`
+
+`docker-compose.local.yml` builds ckanext-sofia from a checkout in
+`./src/ckanext-sofia` (target `local` of `ckan/Dockerfile`), mounts it so
+code and template changes need only a restart, and publishes CKAN's port on
+the local network. Use it together with the main file:
+
+	docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+
+or set `COMPOSE_PATH_SEPARATOR=:` and
+`COMPOSE_FILE=docker-compose.yml:docker-compose.local.yml` in `.env`. Production
+uses `docker-compose.yml` alone; its image (target `production`, the default)
+installs ckanext-sofia from GitHub.
+
+
+
 Copying and License
 -------------------
 
