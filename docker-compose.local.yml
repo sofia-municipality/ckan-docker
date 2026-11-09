@@ -7,6 +7,7 @@
 #
 # - ckanext-sofia is built from ./src/ckanext-sofia (local branch) instead of
 #   GitHub, and mounted so code and template changes need only a restart.
+# - ckanext-sofia-calendar the same way, from ./src/ckanext-sofia-calendar.
 # - CKAN's port is published on all interfaces, so devices on the local
 #   network reach it without nginx/TLS.
 services:
@@ -15,7 +16,9 @@ services:
       target: local
       additional_contexts:
         ckanext-sofia: ./src/ckanext-sofia
+        ckanext-sofia-calendar: ./src/ckanext-sofia-calendar
     ports:
       - "0.0.0.0:${CKAN_PORT_HOST}:5000"
     volumes:
       - ./src/ckanext-sofia:/srv/app/src/ckanext-sofia
+      - ./src/ckanext-sofia-calendar:/srv/app/src/ckanext-sofia-calendar
