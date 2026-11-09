@@ -1,0 +1,26 @@
+# Local email testing: CKAN sends every email to Mailpit, which keeps them
+# and shows them at http://localhost:8025 (nothing leaves the machine).
+# Add the file to COMPOSE_FILE in .env, after the local one:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.local.yml:docker-compose.mailpit.yml
+# Not for production.
+services:
+  mailpit:
+    image: axllent/mailpit:v1.20.4
+    restart: unless-stopped
+    networks:
+      - ckannet
+    ports:
+      - "0.0.0.0:8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+
+  ckan:
+    depends_on:
+      - mailpit
+    environment:
+      CKAN_SMTP_SERVER: mailpit:1025
+      CKAN_SMTP_STARTTLS: "False"
+      CKAN_SMTP_USER: ""
+      CKAN_SMTP_PASSWORD: ""
+      CKAN_SMTP_MAIL_FROM: opendata@sofia.local
