@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# Restore only the datasets from a backup made by bin/backup, through the CKAN API.
+#
+#   bin/restore-datasets <backup dir or datasets.json> [--dry-run] [name ...]
+#
+# Each dataset in datasets.json is updated if it exists here and created if not.
+# Users, organisations, groups, pages and settings are not changed, and datasets
+# that are not in the backup are left alone. The organisations and groups of the
+# datasets must exist here. Uploaded files and DataStore tables are not restored:
+# use bin/restore for those. With names, only those datasets are restored.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+export MSYS_NO_PATHCONV=1
+
+SRC="${1:?Usage: bin/restore-datasets <backup dir or datasets.json> [--dry-run] [name ...]}"
+shift
+[ -d "$SRC" ] && SRC="$SRC/datasets.json"
+[ -f "$SRC" ] || { echo "Not found: $SRC" >&2; exit 1; }
+DRY_RUN=
+if [ "${1:-}" = "--dry-run" ]; then DRY_RUN=1; shift; fi
+NAMES="$*"
+
+env_value() { grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- | tr -d '"'; }
+SYSADMIN=$(env_value CKAN_SYSADMIN_NAME); SYSADMIN=${SYSADMIN:-ckan_admin}
+
+# A temporary sysadmin token, revoked on exit (as in bin/backup)
+TOKEN_NAME="restore-datasets-$(date +%s)"
+TOKEN=$(docker compose exec -T ckan ckan user token add "$SYSADMIN" "$TOKEN_NAME" 2>/dev/null | tail -n 1 | tr -d '\t\r')
+revoke_token() {
+    for id in $(docker compose exec -T ckan ckan user token list "$SYSADMIN" 2>/dev/null \
+                | sed -n "s/.*\[\(.*\)\] $TOKEN_NAME - .*/\1/p"); do
+        docker compose exec -T ckan ckan user token revoke "$id" > /dev/null 2>&1
+    done
+}
+trap revoke_token EXIT
+
+docker compose exec -T -e TOKEN="$TOKEN" -e DRY_RUN="$DRY_RUN" -e NAMES="$NAMES" ckan python3 -c '
+import json, os, sys, urllib.error, urllib.request
+
+API = "http://localhost:5000/api/3/action/"
+HEADERS = {"Authorization": os.environ["TOKEN"], "Content-Type": "application/json"}
+DRY_RUN = bool(os.environ.get("DRY_RUN"))
+NAMES = set(os.environ.get("NAMES", "").split())
+
+# Fields CKAN computes itself; sending them back fails validation or is ignored
+DATASET_DROP = {"metadata_created", "metadata_modified", "num_resources", "num_tags",
+                "organization", "creator_user_id", "revision_id", "tracking_summary",
+                "relationships_as_object", "relationships_as_subject", "isopen",
+                "license_title", "license_url"}
+RESOURCE_DROP = {"package_id", "metadata_modified", "tracking_summary",
+                 "datastore_active", "datastore_contains_all_records_of_source",
+                 "position", "revision_id"}
+
+
+def call(action, body):
+    req = urllib.request.Request(API + action, data=json.dumps(body).encode(), headers=HEADERS)
+    try:
+        return json.load(urllib.request.urlopen(req))["result"], None
+    except urllib.error.HTTPError as e:
+        try:
+            return None, json.load(e)["error"]
+        except Exception:
+            return None, "HTTP %s" % e.code
+
+
+def prepare(pkg):
+    body = {k: v for k, v in pkg.items() if k not in DATASET_DROP}
+    if pkg.get("organization"):
+        body["owner_org"] = pkg["organization"]["name"]
+    body["groups"] = [{"name": g["name"]} for g in pkg.get("groups", [])]
+    body["tags"] = [{"name": t["name"]} for t in pkg.get("tags", [])]
+    body["resources"] = [{k: v for k, v in r.items() if k not in RESOURCE_DROP}
+                         for r in pkg.get("resources", [])]
+    return body
+
+
+data = json.load(sys.stdin)
+packages = data["result"]["results"] if "result" in data else data
+if NAMES:
+    packages = [p for p in packages if p["name"] in NAMES or p["id"] in NAMES]
+    missing = NAMES - {p["name"] for p in packages} - {p["id"] for p in packages}
+    for name in sorted(missing):
+        print("not in the backup: %s" % name)
+
+counts = {"created": 0, "updated": 0, "failed": 0}
+for pkg in packages:
+    existing, _ = call("package_show", {"id": pkg["id"]})
+    if existing is None:
+        existing, _ = call("package_show", {"id": pkg["name"]})
+    action = "package_update" if existing else "package_create"
+    body = prepare(pkg)
+    if existing:
+        body["id"] = existing["id"]
+    if DRY_RUN:
+        print("%s %s" % ("update" if existing else "create", pkg["name"]))
+        counts["updated" if existing else "created"] += 1
+        continue
+    _, error = call(action, body)
+    if error:
+        counts["failed"] += 1
+        print("FAILED %s: %s" % (pkg["name"], json.dumps(error, ensure_ascii=False)[:500]))
+    else:
+        counts["updated" if existing else "created"] += 1
+        print("%s %s" % ("updated" if existing else "created", pkg["name"]))
+
+print("%s%d updated, %d created, %d failed (of %d)" % (
+    "Dry run: " if DRY_RUN else "", counts["updated"], counts["created"],
+    counts["failed"], len(packages)))
+sys.exit(1 if counts["failed"] else 0)
+' < "$SRC"
+unset TOKEN
