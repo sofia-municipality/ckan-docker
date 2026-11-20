@@ -15,6 +15,9 @@ RUN pip install -e 'git+https://github.com/ckan/ckanext-geoview.git@v0.3.1#egg=c
 ### Scheming - dataset and organisation schemas (ckan/schemas) ###
 RUN pip install -e 'git+https://github.com/ckan/ckanext-scheming.git@release-3.1.0#egg=ckanext-scheming'
 COPY --chown=ckan-sys:ckan-sys schemas ${APP_DIR}/schemas
+### Pages - static pages and blog ("Актуално", news) ###
+# Pinned to a master commit: v0.5.2 (latest release) fails on CKAN 2.11 and has no migrations
+RUN pip install -e 'git+https://github.com/ckan/ckanext-pages.git@28eba99ad85d3b9037f5aaddad1f083300c69041#egg=ckanext-pages'
 
 # Copy custom initialization scripts
 COPY --chown=ckan-sys:ckan-sys docker-entrypoint.d/* /docker-entrypoint.d/
