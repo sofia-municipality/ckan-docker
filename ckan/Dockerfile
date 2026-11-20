@@ -53,17 +53,23 @@ COPY --chown=ckan:ckan-sys --from=ckanext-sofia . ${SRC_DIR}/ckanext-sofia
 RUN pip install --no-cache-dir -e ${SRC_DIR}/ckanext-sofia && \
     if [ -f ${SRC_DIR}/ckanext-sofia/requirements.txt ]; then \
         pip install --no-cache-dir -r ${SRC_DIR}/ckanext-sofia/requirements.txt; fi
-# ckanext-sofia-calendar from ../src/ckanext-sofia-calendar (no public repository yet)
+# ckanext-sofia-calendar from ../src/ckanext-sofia-calendar
 COPY --chown=ckan:ckan-sys --from=ckanext-sofia-calendar . ${SRC_DIR}/ckanext-sofia-calendar
 RUN pip install --no-cache-dir -e ${SRC_DIR}/ckanext-sofia-calendar
 USER ckan
 
 
-# Production (default target): ckanext-sofia from GitHub.
-# ckanext-sofia-calendar is not installed until it has a repository to install from.
+# Production (default target): ckanext-sofia and ckanext-sofia-calendar from GitHub.
+# The branches are build arguments (CKANEXT_SOFIA_REF, CKANEXT_SOFIA_CALENDAR_REF
+# in .env); the calendar's main branch has no code yet, so it defaults to develop.
 FROM base AS production
+
+ARG CKANEXT_SOFIA_REF=main
+ARG CKANEXT_SOFIA_CALENDAR_REF=develop
 
 USER root
 RUN pip install --no-cache-dir -e \
-    git+https://github.com/sofia-municipality/ckanext-sofia.git@main#egg=ckanext-sofia
+    git+https://github.com/sofia-municipality/ckanext-sofia.git@${CKANEXT_SOFIA_REF}#egg=ckanext-sofia
+RUN pip install --no-cache-dir -e \
+    git+https://github.com/sofia-municipality/ckanext-sofia-calendar.git@${CKANEXT_SOFIA_CALENDAR_REF}#egg=ckanext-sofia-calendar
 USER ckan

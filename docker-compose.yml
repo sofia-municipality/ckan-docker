@@ -28,6 +28,8 @@ services:
       dockerfile: Dockerfile
       args:
         - TZ=${TZ}
+        - CKANEXT_SOFIA_REF=${CKANEXT_SOFIA_REF:-main}
+        - CKANEXT_SOFIA_CALENDAR_REF=${CKANEXT_SOFIA_CALENDAR_REF:-develop}
     networks:
       - ckannet
       - dbnet
