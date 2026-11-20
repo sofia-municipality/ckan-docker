@@ -53,10 +53,14 @@ COPY --chown=ckan:ckan-sys --from=ckanext-sofia . ${SRC_DIR}/ckanext-sofia
 RUN pip install --no-cache-dir -e ${SRC_DIR}/ckanext-sofia && \
     if [ -f ${SRC_DIR}/ckanext-sofia/requirements.txt ]; then \
         pip install --no-cache-dir -r ${SRC_DIR}/ckanext-sofia/requirements.txt; fi
+# ckanext-sofia-calendar from ../src/ckanext-sofia-calendar (no public repository yet)
+COPY --chown=ckan:ckan-sys --from=ckanext-sofia-calendar . ${SRC_DIR}/ckanext-sofia-calendar
+RUN pip install --no-cache-dir -e ${SRC_DIR}/ckanext-sofia-calendar
 USER ckan
 
 
-# Production (default target): ckanext-sofia from GitHub
+# Production (default target): ckanext-sofia from GitHub.
+# ckanext-sofia-calendar is not installed until it has a repository to install from.
 FROM base AS production
 
 USER root
