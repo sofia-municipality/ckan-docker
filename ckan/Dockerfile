@@ -20,6 +20,9 @@ COPY --chown=ckan-sys:ckan-sys schemas ${APP_DIR}/schemas
 RUN pip install -e 'git+https://github.com/ckan/ckanext-pages.git@28eba99ad85d3b9037f5aaddad1f083300c69041#egg=ckanext-pages'
 ### Showcase - "Истории с данни" linking datasets ###
 RUN pip install -e 'git+https://github.com/ckan/ckanext-showcase.git@v1.8.4#egg=ckanext-showcase'
+### DCAT - DCAT-AP RDF, JSON-LD and catalogue endpoints ###
+RUN pip install -e 'git+https://github.com/ckan/ckanext-dcat.git@v2.4.5#egg=ckanext-dcat' && \
+    pip install -r ${SRC_DIR}/ckanext-dcat/requirements.txt
 
 # Copy custom initialization scripts
 COPY --chown=ckan-sys:ckan-sys docker-entrypoint.d/* /docker-entrypoint.d/
