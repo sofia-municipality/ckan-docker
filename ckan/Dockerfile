@@ -23,6 +23,8 @@ RUN pip install -e 'git+https://github.com/ckan/ckanext-showcase.git@v1.8.4#egg=
 ### DCAT - DCAT-AP RDF, JSON-LD and catalogue endpoints ###
 RUN pip install -e 'git+https://github.com/ckan/ckanext-dcat.git@v2.4.5#egg=ckanext-dcat' && \
     pip install -r ${SRC_DIR}/ckanext-dcat/requirements.txt
+### PDF view ###
+RUN pip install -e 'git+https://github.com/ckan/ckanext-pdfview.git@0.0.9#egg=ckanext-pdfview'
 
 # Copy custom initialization scripts
 COPY --chown=ckan-sys:ckan-sys docker-entrypoint.d/* /docker-entrypoint.d/
