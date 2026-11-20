@@ -1,0 +1,61 @@
+scheming_version: 2
+organization_type: organization
+about: Организация, публикуваща данни на портала
+about_url: https://github.com/sofia-municipality/ckan-docker
+
+fields:
+
+- field_name: title
+  label: {bg: Име, en: Name}
+  validators: ignore_missing unicode_safe
+  form_snippet: large_text.html
+  form_attrs: {data-module: slug-preview-target}
+
+- field_name: name
+  label: URL
+  validators: not_empty unicode_safe name_validator group_name_validator
+  form_snippet: slug.html
+
+- field_name: description
+  label: {bg: Описание, en: Description}
+  form_snippet: markdown.html
+
+- field_name: image_url
+  label: {bg: Изображение, en: Image}
+  preset: organization_url_upload
+
+# TS 2.2-B: type of organisation, searchable
+- field_name: org_type
+  label: {bg: Тип организация, en: Organisation type}
+  preset: select
+  choices:
+  - {value: public, label: {bg: Публична, en: Public}}
+  - {value: private, label: {bg: Частна, en: Private}}
+  - {value: individual, label: {bg: Физическо лице, en: Individual}}
+
+# TS 2.1-B: how to request restricted data. Structures of Sofia Municipality
+# send people to the Call Sofia contact centre; other organisations give the
+# public page that explains how to get their data.
+- field_name: municipal
+  label: {bg: Структура на Столична община, en: Structure of Sofia Municipality}
+  preset: select
+  validators: default(false) scheming_choices
+  choices:
+  - {value: 'true', label: {bg: Да, en: 'Yes'}}
+  - {value: 'false', label: {bg: Не, en: 'No'}}
+  help_text:
+    bg: Заявките за данни на общинските структури се подават през Call Sofia.
+    en: Data requests for municipal structures go through Call Sofia.
+
+- field_name: access_request_url
+  label: {bg: Как да заявите данни (URL), en: How to request data (URL)}
+  validators: ignore_missing unicode_safe url_validator
+  display_snippet: link.html
+  form_placeholder: https://
+  help_text:
+    bg: >-
+      За организации извън Столична община: публично достъпна страница, на която е
+      обяснено как се получават данните.
+    en: >-
+      For organisations outside Sofia Municipality: a public page explaining how to
+      get the data.
