@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Restore a backup made by bin/backup into the running stack.
+#
+#   bin/restore BACKUP_DIR [--yes]
+#
+# REPLACES the CKAN and DataStore databases and the uploaded files, then
+# rebuilds the Solr index. .env and ckan.ini are not overwritten; compare them
+# with env.backup and ckan.ini in the backup by hand.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+# Git Bash on Windows would turn container paths such as /var/lib/ckan into C:/...
+export MSYS_NO_PATHCONV=1
+
+SRC="${1:?Usage: bin/restore BACKUP_DIR [--yes]}"
+for f in globals.sql ckandb.dump datastore.dump ckan_storage.tgz; do
+    [ -f "$SRC/$f" ] || { echo "Missing $SRC/$f"; exit 1; }
+done
+
+if [ "${2:-}" != "--yes" ]; then
+    read -r -p "This replaces all portal data with $SRC. Type 'restore' to continue: " answer
+    [ "$answer" = "restore" ] || { echo "Cancelled"; exit 1; }
+fi
+
+env_value() { grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- | tr -d '"'; }
+PG_USER=$(env_value POSTGRES_USER)
+CKAN_DB=$(env_value CKAN_DB)
+CKAN_DB_USER=$(env_value CKAN_DB_USER)
+DATASTORE_DB=$(env_value DATASTORE_DB)
+
+echo "Stopping CKAN"
+docker compose stop ckan
+
+echo "Restoring roles and databases"
+# Existing roles make some statements fail; that is expected
+docker compose exec -T db psql -U "$PG_USER" -q -d postgres < "$SRC/globals.sql" > /dev/null 2>&1 || true
+docker compose exec -T db pg_restore -U "$PG_USER" --clean --if-exists --no-owner --role="$CKAN_DB_USER" \
+    -d "$CKAN_DB" < "$SRC/ckandb.dump"
+docker compose exec -T db pg_restore -U "$PG_USER" --clean --if-exists -d "$DATASTORE_DB" < "$SRC/datastore.dump"
+
+echo "Restoring uploaded files"
+# The volume mounted at /var/lib/ckan in the CKAN container (e.g. ckan-docker_ckan_storage)
+STORAGE_VOLUME=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/lib/ckan"}}{{.Name}}{{end}}{{end}}' \
+    "$(docker compose ps -a -q ckan)")
+# Files uploaded after the backup are removed, so the storage matches the database
+docker run --rm -i -v "$STORAGE_VOLUME:/data" alpine \
+    sh -c 'find /data -mindepth 1 -delete && tar xzf - -C /data' < "$SRC/ckan_storage.tgz"
+
+echo "Starting CKAN and rebuilding the search index"
+docker compose up -d ckan
+until [ "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q ckan)")" = healthy ]; do sleep 5; done
+docker compose exec -T ckan ckan -c /srv/app/ckan.ini search-index rebuild
+
+echo "Restore complete"

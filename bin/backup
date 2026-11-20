@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Back up the CKAN databases, uploaded files and configuration.
+#
+#   bin/backup [DESTINATION]        (default: backup/<date>_<time>)
+#
+# Writes globals.sql (roles), ckandb.dump and datastore.dump (pg_dump custom
+# format), ckan_storage.tgz (uploaded files), ckan.ini, env.backup (.env) and
+# datasets.json (package_search of all datasets, including private and drafts).
+# The Solr index is not backed up: bin/restore rebuilds it.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+# Git Bash on Windows would turn container paths such as /var/lib/ckan into C:/...
+export MSYS_NO_PATHCONV=1
+
+env_value() { grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- | tr -d '"'; }
+PG_USER=$(env_value POSTGRES_USER)
+CKAN_DB=$(env_value CKAN_DB)
+DATASTORE_DB=$(env_value DATASTORE_DB)
+
+DEST="${1:-backup/$(date +%Y-%m-%d_%H-%M-%S)}"
+mkdir -p "$DEST"
+echo "Backing up to $DEST"
+
+docker compose exec -T db pg_dumpall -U "$PG_USER" --globals-only > "$DEST/globals.sql"
+docker compose exec -T db pg_dump -U "$PG_USER" -Fc "$CKAN_DB" > "$DEST/ckandb.dump"
+docker compose exec -T db pg_dump -U "$PG_USER" -Fc "$DATASTORE_DB" > "$DEST/datastore.dump"
+docker compose exec -T ckan tar czf - -C /var/lib/ckan . > "$DEST/ckan_storage.tgz"
+docker compose exec -T ckan cat /srv/app/ckan.ini > "$DEST/ckan.ini"
+cp .env "$DEST/env.backup"
+
+# datasets.json, read with a temporary sysadmin token that is revoked afterwards
+SYSADMIN=$(env_value CKAN_SYSADMIN_NAME); SYSADMIN=${SYSADMIN:-ckan_admin}
+TOKEN_NAME="backup-$(date +%s)"
+TOKEN=$(docker compose exec -T ckan ckan user token add "$SYSADMIN" "$TOKEN_NAME" 2>/dev/null | tail -n 1 | tr -d '\t\r')
+revoke_token() {
+    for id in $(docker compose exec -T ckan ckan user token list "$SYSADMIN" 2>/dev/null \
+                | sed -n "s/.*\[\(.*\)\] $TOKEN_NAME - .*/\1/p"); do
+        docker compose exec -T ckan ckan user token revoke "$id" > /dev/null 2>&1
+    done
+}
+trap revoke_token EXIT
+docker compose exec -T -e TOKEN="$TOKEN" ckan python3 -c "import os,urllib.request as u;r=u.Request('http://localhost:5000/api/3/action/package_search?rows=1000&include_private=true&include_drafts=true',headers={'Authorization':os.environ['TOKEN']});print(u.urlopen(r).read().decode())" > "$DEST/datasets.json"
+unset TOKEN
+
+# A backup that cannot be read is worse than none: check the dumps
+for f in ckandb.dump datastore.dump; do
+    docker compose exec -T db pg_restore --list < "$DEST/$f" > /dev/null
+done
+tar tzf - < "$DEST/ckan_storage.tgz" > /dev/null
+
+ls -l "$DEST"
+echo "Backup complete: $DEST"
