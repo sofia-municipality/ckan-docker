@@ -33,7 +33,14 @@ docker compose stop ckan
 echo "Restoring roles and databases"
 # Existing roles make some statements fail; that is expected
 docker compose exec -T db psql -U "$PG_USER" -q -d postgres < "$SRC/globals.sql" > /dev/null 2>&1 || true
-docker compose exec -T db pg_restore -U "$PG_USER" --clean --if-exists --no-owner --role="$CKAN_DB_USER" \
+# The CKAN database is recreated, not cleaned: plugin tables (showcase, calendar,
+# subscriptions) reference user, package and group, so --clean cannot drop those
+# and the restore would mix old and new rows. Plugin tables missing from the
+# backup are created by "ckan db upgrade" below.
+docker compose exec -T db psql -U "$PG_USER" -q -d postgres -v ON_ERROR_STOP=1 \
+    -c "DROP DATABASE IF EXISTS \"$CKAN_DB\" WITH (FORCE)" \
+    -c "CREATE DATABASE \"$CKAN_DB\" OWNER \"$CKAN_DB_USER\" ENCODING 'UTF8'"
+docker compose exec -T db pg_restore -U "$PG_USER" --no-owner --role="$CKAN_DB_USER" \
     -d "$CKAN_DB" < "$SRC/ckandb.dump"
 docker compose exec -T db pg_restore -U "$PG_USER" --clean --if-exists -d "$DATASTORE_DB" < "$SRC/datastore.dump"
 
@@ -48,6 +55,7 @@ docker run --rm -i -v "$STORAGE_VOLUME:/data" alpine \
 echo "Starting CKAN and rebuilding the search index"
 docker compose up -d ckan
 until [ "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q ckan)")" = healthy ]; do sleep 5; done
+docker compose exec -T ckan ckan -c /srv/app/ckan.ini db upgrade
 docker compose exec -T ckan ckan -c /srv/app/ckan.ini search-index rebuild
 
 echo "Restore complete"
